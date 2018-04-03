@@ -103,5 +103,3 @@ public static void main(String[] args) {
 		```
 	* run Launcher.java (ARBIFramework-0.8)
 	* run KmStarter.java (KnowledgeManager)
-
-	# KnowledgeManagerAgent
