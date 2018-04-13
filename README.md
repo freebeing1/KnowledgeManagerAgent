@@ -2,10 +2,10 @@
 
 ## KM agent code
 
-**Environment setting**
+###Environment setting
 
-* OS : Ubuntu 14.04 LTS
-* Install ROS Indigo
+* OS : **Ubuntu 14.04 LTS**
+* Install **ROS Indigo**
 	* Setup your sources.list
 		
 		```
@@ -51,7 +51,7 @@
 		sudo apt-get install python-rosinstall
 		```
 
-	* Check ROS
+	* Check roscore
 		
 		```
 		roscore
@@ -72,46 +72,85 @@
 		started core service [/rosout]
 		...
 		```
+
 	
-* Install RosJava
-	* version : indigo
- 	
+
+* Install **rosjava_core**
+
+	* Prerequisites
+
 		```
 		sudo pip install --upgrade sphinx Pygments 
 		```
+	* Non-ROS Installation
+		
 		```
 		git clone https://github.com/rosjava/rosjava_core
 		cd rosjava_core
 		git checkout -b indigo origin/indigo
 		```
+		
+	* Building
+		
+		To build rosjava_core and install it to your local Maven respository, execute gradle wrapper:
+		
 		```
 		cd rosjava_core
 		./gradlew install
 		```
-			
+		
+		To build the documentation:
+	
 		```
 		./gradlew docs
+		```
+		
+		To run the tests:
+	
+		```
 		./gradlew test
+		```
+		
+		To generate the Eclipse project files:
+	
+		```
 		./gradlew eclipse
 		```
 
-* Import rosjava project after installation 
-	
-* Import ArbiFramework project
+* Install **Apache Jena**
+	* Download Apache jena [here] (https://jena.apache.org/download/index.cgi)
 
-* Install Apache Jena
-	* download Apache jena [here] (https://jena.apache.org/download/index.cgi)
+* Install Redis
+	
+	```
+	sudo add-apt-repository ppa:chris-lea/redis-server
+	sudo apt-get update
+	sudo apt-get install build-essential
+	sudo apt-get install redis-server
+	```
 
 * Install Turtlebot2 package
+	* ... 
+
+
+* Import **rosjava_core**
+	* apache\_xmlrpc\_client
+	* apache\_xmlrpc\_common
+	* apache\_xmlrpc\_server
+	* rosjava
+	
+* Import **ARBIFramework-0.8**
+
 	
 	
-**Usage**
+###Usage
 
 * Ros node usage
 	* NodeMain implementation
 
 ```
 import org.ros.namespace.GraphName;
+import org.ros.node.ConnectedNode;
 import org.ros.node.DefaultNodeMainExecutor;
 import org.ros.node.Node;
 import org.ros.node.NodeConfiguration;
@@ -131,7 +170,7 @@ public class MyNode implements NodeMain {
 
 	@Override
 	public void onStart(ConnectedNode node) {
-	
+		// TODO Auto-generated method stub
 	}
 
 	@Override
@@ -171,3 +210,13 @@ public static void main(String[] args) {
 		```
 	* run Launcher.java (ARBIFramework-0.8)
 	* run KmStarter.java (KnowledgeManager)
+
+* Test DummyTaskManager
+	* run roscore on terminal
+	
+		```
+		roscore
+		```
+	* run Launcher.java (ARBIFramework-0.8)
+	* run KmStarter.java (KnowledgeManager)
+	* run DummyTmAgent.java (DummyTaskManager)
