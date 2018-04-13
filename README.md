@@ -5,6 +5,74 @@
 **Environment setting**
 
 * OS : Ubuntu 14.04 LTS
+* Install ROS Indigo
+	* Setup your sources.list
+		
+		```
+		sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+		```
+	
+	* Setup your key
+		
+		```
+		sudo apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net --recv-key 0xB01FA116
+		```
+	
+	* Installation
+	
+		```
+		sudo apt-get update
+		sudo apt-get upgrade
+		sudo apt-get install ros-indigo-desktop-full
+		```	
+		* If you fail to install with the command above, execute following command
+			
+			```
+			sudo apt-get install libsdformat1
+			```
+	
+	* Initialize rosdep
+	
+		```
+		sudo rosdep init
+		rosdep update
+		```
+	
+	* Environment setup
+	
+		```
+		echo "source /opt/ros/indigo/setup.bash" >> ~/.bashrc
+		source ~/.bashrc
+		```
+	
+	* Getting rosinstall
+
+		```
+		sudo apt-get install python-rosinstall
+		```
+
+	* Check ROS
+		
+		```
+		roscore
+		```
+		```
+		PARAMETERS
+		 *  /rosdistro: indigo
+		 *  /rosversion: 1.11.21
+		
+		NODES
+		
+		auto-starting new master
+		process[master]: started with pid [...]
+		ROS_MASTER_URI=http://.../
+		
+		setting /run_id to ...
+		process[rosout-1] started with pid [...]
+		started core service [/rosout]
+		...
+		```
+	
 * Install RosJava
 	* version : indigo
  	
