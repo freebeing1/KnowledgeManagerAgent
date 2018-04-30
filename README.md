@@ -118,7 +118,7 @@
 		```
 
 * Install **Apache Jena**
-	* Download Apache jena [here] (https://jena.apache.org/download/index.cgi)
+	* Download Apache jena [[here]](https://jena.apache.org/download/index.cgi)
 
 * Install Redis
 	
