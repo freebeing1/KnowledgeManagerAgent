@@ -4,5 +4,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ARBIFramework-0.8"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/rosjava"/>
+	<classpathentry kind="lib" path="/home/freebeing1/json_simple-1.1.jar"/>
+	<classpathentry kind="lib" path="/home/freebeing1/github/ARBI/InterfaceManager/jar/move_base_msgs-1.12.11.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
