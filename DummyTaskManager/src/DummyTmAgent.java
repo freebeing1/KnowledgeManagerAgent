@@ -91,7 +91,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 //					System.out.println("Enter msg Content:");
 //					sc.nextLine();
 //					String msg = sc.nextLine();
-//
+////					String msg = "(requestPath \"action\" (currentPoint 5.25 0.8065 0.0) \""+isro_map_IRI+"ReceptionRoom001\" \""+isro_map_IRI+"HospitalRoom001\")";
 //
 //					String result;
 //
@@ -210,7 +210,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 					}
 					
 					if(SCENE_NUMBER == 5 && SCENE5_COMPLETE == false) {
-						String glString = "(requestPath \"action\" (currentPoint 0.0 0.0 0.0) \""+isro_map_IRI+"ReceptionRoom001\" \""+isro_map_IRI+"HospitalRoom001\")";
+						String glString = "(requestPath \"action\" (currentPoint 5.25 0.8065 0.0) \""+isro_map_IRI+"ReceptionRoom001\" \""+isro_map_IRI+"HospitalRoom001\")";
 						String res = request(KNOWLEDGEMANAGER_ADDRESS, glString);
 						System.out.println("<Request msg>:" + glString);
 						System.out.println("<Result>:"+res);
@@ -235,14 +235,15 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 						GeneralizedList pathGL = null;
 						try {
 							pathGL = GLFactory.newGLFromGLString(res);
+							// pathGL = (requestPath "action" (result (action "moveTo({5.25 0.81 0.0}, {5.65 0.82 0.0})") (action "moveTo({5.65 0.82 0.0}, {6.62 0.58 0.0})") (action "moveTo({6.62 0.58 0.0}, {19.8 -1.27 0.0})") (action "moveTo({19.8 -1.27 0.0}, {21.1 -5.88 0.0})") (action "translocateLevel(3, 5)") (action "moveTo({21.1 -5.88 0.0} {19.65 -2.99 0.0})") (action "moveTo({19.65 -2.99 0.0} {19.75 -1.84 0.0})")))
 						} catch (ParseException e) {
 							e.printStackTrace();
 						}
 						int pathSize = pathGL.getExpression(1).asGeneralizedList().getExpressionsSize();
 						for(int i=0; i<pathSize; i++) {
 							String temp = pathGL.getExpression(1).asGeneralizedList().getExpression(i).asGeneralizedList().getExpression(0).asValue().stringValue();
-							// temp = "moveTo({0.0 0.0 0.0} {2.0 7.0 0.0})"
-							// temp = "translocateLevel("3" "5")"
+							// temp = "moveTo({0.0 0.0 0.0}, {2.0 7.0 0.0})"
+							// temp = "translocateLevel([3], [5])"
 							Pattern patternMove = Pattern.compile("{.*?}");
 							Matcher matcherMove = patternMove.matcher(temp);
 							if(matcherMove.matches()) {
@@ -262,7 +263,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 								robotNavigation(s_x, s_y, s_z, e_x, e_y, e_z);
 							}
 							
-							Pattern patternLevel = Pattern.compile("\".*?\"");
+							Pattern patternLevel = Pattern.compile("[.*?]");
 							Matcher matcherLevel = patternLevel.matcher(temp);
 							if(matcherLevel.matches()) {
 								matcherLevel.find();
