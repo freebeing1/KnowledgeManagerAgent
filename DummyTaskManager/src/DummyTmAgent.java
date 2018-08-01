@@ -37,7 +37,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 	public static final boolean MODE_TEST = false;
 	public static final boolean MODE_RUN = true;
 
-	public static int SCENE_NUMBER = 0;
+	public static int SCENE_NUMBER = 5;
 	
 	public static boolean SCENE1_COMPLETE = false;
 	public static boolean SCENE2_COMPLETE = false;
@@ -52,6 +52,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 	public static String USER = "";
 	
 	public static boolean actionComplete = false;
+	public static boolean EVOpen = false;
 	
 	// IRIs
 	public static final String isro_IRI = "http://www.robot-arbi.kr/ontologies/isro.owl#";
@@ -210,6 +211,15 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 					}
 					
 					if(SCENE_NUMBER == 5 && SCENE5_COMPLETE == false) {
+						try
+						{
+							Thread.sleep(1500);
+						}
+						catch (InterruptedException e1)
+						{
+							e1.printStackTrace();
+						}
+						
 						String glString = "(requestPath \"action\" (currentPoint 5.25 0.8065 0.0) \""+isro_map_IRI+"ReceptionRoom001\" \""+isro_map_IRI+"HospitalRoom001\")";
 						String res = request(KNOWLEDGEMANAGER_ADDRESS, glString);
 						System.out.println("<Request msg>:" + glString);
@@ -244,31 +254,33 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 							String temp = pathGL.getExpression(1).asGeneralizedList().getExpression(i).asGeneralizedList().getExpression(0).asValue().stringValue();
 							// temp = "moveTo({0.0 0.0 0.0}, {2.0 7.0 0.0})"
 							// temp = "translocateLevel([3], [5])"
-							Pattern patternMove = Pattern.compile("{.*?}");
+							Pattern patternMove = Pattern.compile("\\{(.*?)\\}");
 							Matcher matcherMove = patternMove.matcher(temp);
-							if(matcherMove.matches()) {
-								matcherMove.find();
-								
-								String startCoord = matcherMove.group(1);
-								String endCoord = matcherMove.group(2);
-								
-								double s_x = Double.parseDouble(startCoord.split(" ")[0]); 
-								double s_y = Double.parseDouble(startCoord.split(" ")[1]);
-								double s_z = Double.parseDouble(startCoord.split(" ")[2]);
-								
-								double e_x = Double.parseDouble(endCoord.split(" ")[0]);
-								double e_y = Double.parseDouble(endCoord.split(" ")[1]);
-								double e_z = Double.parseDouble(endCoord.split(" ")[2]);
-								
-								robotNavigation(s_x, s_y, s_z, e_x, e_y, e_z);
-							}
 							
-							Pattern patternLevel = Pattern.compile("[.*?]");
+							matcherMove.find();
+							String startCoord = matcherMove.group(1);
+							
+							matcherMove.find();
+							String endCoord = matcherMove.group(1);
+								
+							double s_x = Double.parseDouble(startCoord.split(" ")[0]); 
+							double s_y = Double.parseDouble(startCoord.split(" ")[1]);
+							double s_z = Double.parseDouble(startCoord.split(" ")[2]);
+								
+							double e_x = Double.parseDouble(endCoord.split(" ")[0]);
+							double e_y = Double.parseDouble(endCoord.split(" ")[1]);
+							double e_z = Double.parseDouble(endCoord.split(" ")[2]);
+								
+							robotNavigation(e_x, e_y, e_z);
+							
+							
+							Pattern patternLevel = Pattern.compile("\\[(.*?)\\]");
 							Matcher matcherLevel = patternLevel.matcher(temp);
-							if(matcherLevel.matches()) {
-								matcherLevel.find();
+							if(matcherLevel.find()) {
+								
 								int startLevel = Integer.parseInt(matcherLevel.group(1));
-								int endLevel = Integer.parseInt(matcherLevel.group(2));
+								matcherLevel.find();
+								int endLevel = Integer.parseInt(matcherLevel.group(1));
 								
 								robotTranslocateLevel(startLevel, endLevel);
 							}
@@ -319,23 +331,43 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				System.out.println();
 				
 				// EV 문 열림 인식 후 들어가서 endLevel+"층 입니다." 인식 후 내리는 것 까지.... 어떡하쥬?
+				while(!EVOpen) { // 문 열릴 때("문이 열립니다" 소리날 때)까지 대기
+					
+					try
+					{
+						Thread.sleep(200);
+					}
+					catch (InterruptedException e)
+					{
+						e.printStackTrace();
+					}
+					
+				}
+				robotNavigation(21.6, -6.1, 0.0); // 엘리베이터 내부로 이동
+				
+				// "5층을 눌러주세요."
+				
+				// "5층입니다. 문이 열립니다."인식 후 문앞까지 나가기
+				
+				
 			}
 
-			private void robotNavigation(double s_x, double s_y, double s_z, double e_x, double e_y, double e_z) {
+			private void robotNavigation(double e_x, double e_y, double e_z) {
 
 				geometry_msgs.PoseStamped msg = publisher_robotNavigation.newMessage();
 				msg.getHeader().setFrameId("map");
-//				msg.getHeader().setSeq(1);
+				msg.getHeader().setSeq(1);
 				msg.getPose().getPosition().setX(e_x);
 				msg.getPose().getPosition().setY(e_y);
 				msg.getPose().getPosition().setZ(e_z);
 				
-				msg.getPose().getOrientation().setX(s_x);
-				msg.getPose().getOrientation().setY(s_y);
-				msg.getPose().getOrientation().setZ(s_z);
+				msg.getPose().getOrientation().setX(0);
+				msg.getPose().getOrientation().setY(0);
+				msg.getPose().getOrientation().setZ(0.36);
 				msg.getPose().getOrientation().setW(0.93);
-				System.out.println("Go to : (" + e_x + ", " + e_y + ")");
+				System.out.println("Go to : (" + e_x + ", " + e_y + ", "+ e_z +")");
 				publisher_robotNavigation.publish(msg);
+				System.out.println("/move_base_simple/goal published!");
 				
 			}
 
@@ -366,6 +398,21 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 //		Subscriber<std_msgs.String> subscriber_resolution = connectedNode.newSubscriber("/Vision/Resolution", std_msgs.String._TYPE); // (resolution $width $height)
 		Subscriber<std_msgs.String> subscriber_speechAnalysis = connectedNode.newSubscriber("/Dialog/SpeechAnalysis", std_msgs.String._TYPE);
 		Subscriber<move_base_msgs.MoveBaseActionResult> subscriber_navigationResult = connectedNode.newSubscriber("/move_base/result", move_base_msgs.MoveBaseActionResult._TYPE);
+		Subscriber<std_msgs.String> subscriber_EVOpen = connectedNode.newSubscriber("/Elevator", std_msgs.String._TYPE);
+		
+		subscriber_EVOpen.addMessageListener(new MessageListener<std_msgs.String>() {
+
+			@Override
+			public void onNewMessage(std_msgs.String arg)
+			{
+				String msg = arg.getData();
+				if(msg.contains("열")) {
+					EVOpen = true;
+				}
+				
+			}
+			
+		});
 		
 		subscriber_navigationResult.addMessageListener(new MessageListener<MoveBaseActionResult>() {
 
