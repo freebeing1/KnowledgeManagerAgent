@@ -19,6 +19,7 @@ import org.ros.node.NodeMainExecutor;
 import org.ros.node.topic.Publisher;
 import org.ros.node.topic.Subscriber;
 
+import geometry_msgs.PoseStamped;
 import kr.ac.uos.ai.arbi.agent.ArbiAgent;
 import kr.ac.uos.ai.arbi.agent.ArbiAgentExecutor;
 import kr.ac.uos.ai.arbi.model.Expression;
@@ -49,10 +50,17 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 	
 	public static String SITUATION = "";
 	public static String EXPRESSION = "";
-	public static String USER = "";
+	public static String USER = "http://www.robot-arbi.kr/ontologies/DemoKM.owl#Person001";
 	
 	public static boolean actionComplete = false;
 	public static boolean EVOpen = false;
+	public static boolean guideStart = false;
+	public static boolean speechStart = false;
+	public static boolean actionAborted = false;
+	public static boolean getOnEV = false;
+	public static boolean userLost = false;
+	public static boolean userFound = false;
+	public static geometry_msgs.PoseWithCovarianceStamped robotCurrentPose = null;
 	
 	// IRIs
 	public static final String isro_IRI = "http://www.robot-arbi.kr/ontologies/isro.owl#";
@@ -70,6 +78,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 	public static Publisher<std_msgs.String> publisher_robotSpeech;
 	public static Publisher<std_msgs.String> publisher_robotAction;
 	public static Publisher<geometry_msgs.PoseStamped> publisher_robotNavigation;
+	public static Publisher<geometry_msgs.Twist> publisher_robotUserLost;
 	
 	
 	public DummyTmAgent() {
@@ -92,8 +101,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 //					System.out.println("Enter msg Content:");
 //					sc.nextLine();
 //					String msg = sc.nextLine();
-////					String msg = "(requestPath \"action\" (currentPoint 5.25 0.8065 0.0) \""+isro_map_IRI+"ReceptionRoom001\" \""+isro_map_IRI+"HospitalRoom001\")";
-//
+//					
 //					String result;
 //
 //					if (input == 1) {
@@ -110,6 +118,16 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 //				}
 				
 				while(true) {
+					
+					try
+					{
+						Thread.sleep(2500);
+					}
+					catch (InterruptedException e2)
+					{
+						e2.printStackTrace();
+					}
+					
 					if (SCENE_NUMBER == 1 && SCENE1_COMPLETE == false) {
 						String glString = "(queryMultiRelation (tripleSet (triple $s \""+isro_social_IRI+"faceID\" \""+FACE_ID+"\") (triple $s \""+rdf_IRI+"type\" \""+knowrob_IRI+"Person\")) $result)";
 						//(queryMultiRelation (tripleSet (triple $s "isro_social:faceID" "001") (triple $s "rdf:type" "knowrob:Person")) $result)
@@ -127,7 +145,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 						}
 						
 						// 사용자 확인
-						USER = resultGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(0).asValue().stringValue();
+//						USER = resultGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(0).asValue().stringValue();
 						 
 						SITUATION = isro_social_IRI+"Greeting";
 						EXPRESSION = isro_IRI+"NeutralExpression";
@@ -186,7 +204,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 					if(SCENE_NUMBER == 4 && SCENE4_COMPLETE == false) {
 						
 						
-						String glString = "(requestPredicateAnchoring " + USER + " \"걸리다\" \"독감\")";
+						String glString = "(requestPredicateAnchoring \"" + USER + "\" \"걸리다\" \"독감\")";
 						//(requestPredicateAnchoring "DemoKM:Person001" "걸리다" "독감")
 						String res = request(KNOWLEDGEMANAGER_ADDRESS, glString);
 						System.out.println("<Request msg>:" + glString);
@@ -211,20 +229,18 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 					}
 					
 					if(SCENE_NUMBER == 5 && SCENE5_COMPLETE == false) {
-						try
-						{
-							Thread.sleep(1500);
-						}
-						catch (InterruptedException e1)
-						{
-							e1.printStackTrace();
-						}
 						
-						String glString = "(requestPath \"action\" (currentPoint 5.25 0.8065 0.0) \""+isro_map_IRI+"ReceptionRoom001\" \""+isro_map_IRI+"HospitalRoom001\")";
-						String res = request(KNOWLEDGEMANAGER_ADDRESS, glString);
-						System.out.println("<Request msg>:" + glString);
-						System.out.println("<Result>:"+res);
-						System.out.println("\n\n");
+						while(!speechStart) {
+							
+							try
+							{
+								Thread.sleep(200);
+							}
+							catch (InterruptedException e)
+							{
+								e.printStackTrace();
+							}
+						}
 						
 						
 						SITUATION = isro_IRI + "InitDirectGuide";
@@ -242,61 +258,149 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 						System.out.println(jsonObject_requestConversation.toJSONString());
 						System.out.println();
 						
+						while(!guideStart) {
+							
+							try
+							{
+								Thread.sleep(200);
+							}
+							catch (InterruptedException e)
+							{
+								e.printStackTrace();
+							}
+						}
+						guideStart = false;
+						
+						String glString = "(queryRelation \""+DemoKM_IRI+"InternalMedicineDepartment001\" \""+knowrob_IRI+"locatedAt\" $o $result)";
+						String res = query(KNOWLEDGEMANAGER_ADDRESS, glString);
+						System.out.println("<Query msg>:" + glString);
+						System.out.println("<Result>:"+res);
+						System.out.println("\n\n");
+						GeneralizedList resGL = null;
+						try
+						{
+							resGL = GLFactory.newGLFromGLString(res);
+						}
+						catch (ParseException e1)
+						{
+							e1.printStackTrace();
+						}
+						// (queryRelation "http://www.robot-arbi.kr/ontologies/DemoKM.owl#InternalMedicineDepartment001" "http://knowrob.org/kb/knowrob.owl#locatedAt" $o (result (triple "http://www.robot-arbi.kr/ontologies/DemoKM.owl#InternalMedicineDepartment001" "http://knowrob.org/kb/knowrob.owl#locatedAt" "http://www.robot-arbi.kr/ontologies/isro_map.owl#HospitalRoom001")))
+						String destination = resGL.getExpression(3).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(2).asValue().stringValue();
+						
+						glString = "(requestPath \"action\" (currentPoint 0.182 -0.0775 0.0) \""+isro_map_IRI+"ReceptionRoom001\" \""+destination+"\")";
+						res = request(KNOWLEDGEMANAGER_ADDRESS, glString);
+						System.out.println("<Request msg>:" + glString);
+						System.out.println("<Result>:"+res);
+						System.out.println("\n\n");
+						
+						
+						
+						
 						GeneralizedList pathGL = null;
 						try {
 							pathGL = GLFactory.newGLFromGLString(res);
-							// pathGL = (requestPath "action" (result (action "moveTo({5.25 0.81 0.0}, {5.65 0.82 0.0})") (action "moveTo({5.65 0.82 0.0}, {6.62 0.58 0.0})") (action "moveTo({6.62 0.58 0.0}, {19.8 -1.27 0.0})") (action "moveTo({19.8 -1.27 0.0}, {21.1 -5.88 0.0})") (action "translocateLevel(3, 5)") (action "moveTo({21.1 -5.88 0.0} {19.65 -2.99 0.0})") (action "moveTo({19.65 -2.99 0.0} {19.75 -1.84 0.0})")))
+							// pathGL = (requestPath "action" (result (action "moveTo({5.65 0.82 0.0})") (action "moveTo({6.62 0.58 0.0})") (action "moveTo({19.8 -1.27 0.0})") (action "moveTo({21.1 -5.88 0.0})") (action "translocateLevel([6] [3])") (action "moveTo({19.65 -2.99 0.0})") (action "moveTo({19.75 -1.84 0.0})")))
 						} catch (ParseException e) {
 							e.printStackTrace();
 						}
 						int pathSize = pathGL.getExpression(1).asGeneralizedList().getExpressionsSize();
 						for(int i=0; i<pathSize; i++) {
 							String temp = pathGL.getExpression(1).asGeneralizedList().getExpression(i).asGeneralizedList().getExpression(0).asValue().stringValue();
-							// temp = "moveTo({0.0 0.0 0.0}, {2.0 7.0 0.0})"
-							// temp = "translocateLevel([3], [5])"
+							// temp = "moveTo({2.0 7.0 0.0})"
+							// temp = "translocateLevel([3] [5])"
+							
 							Pattern patternMove = Pattern.compile("\\{(.*?)\\}");
 							Matcher matcherMove = patternMove.matcher(temp);
-							
-							matcherMove.find();
-							String startCoord = matcherMove.group(1);
-							
-							matcherMove.find();
-							String endCoord = matcherMove.group(1);
+							if(matcherMove.find()) {
+								String endCoord = matcherMove.group(1);
 								
-							double s_x = Double.parseDouble(startCoord.split(" ")[0]); 
-							double s_y = Double.parseDouble(startCoord.split(" ")[1]);
-							double s_z = Double.parseDouble(startCoord.split(" ")[2]);
-								
-							double e_x = Double.parseDouble(endCoord.split(" ")[0]);
-							double e_y = Double.parseDouble(endCoord.split(" ")[1]);
-							double e_z = Double.parseDouble(endCoord.split(" ")[2]);
-								
-							robotNavigation(e_x, e_y, e_z);
-							
+								double e_x = Double.parseDouble(endCoord.split(" ")[0]);
+								double e_y = Double.parseDouble(endCoord.split(" ")[1]);
+								double e_z = Double.parseDouble(endCoord.split(" ")[2]);
+									
+								robotNavigation(e_x, e_y, e_z);
+							}
 							
 							Pattern patternLevel = Pattern.compile("\\[(.*?)\\]");
 							Matcher matcherLevel = patternLevel.matcher(temp);
 							if(matcherLevel.find()) {
-								
 								int startLevel = Integer.parseInt(matcherLevel.group(1));
+								
 								matcherLevel.find();
 								int endLevel = Integer.parseInt(matcherLevel.group(1));
-								
+									
 								robotTranslocateLevel(startLevel, endLevel);
+								
 							}
-							
-							
-							
+
 							while(!actionComplete) {
 								try {
 									Thread.sleep(200);
 								} catch (InterruptedException e) {
 									e.printStackTrace();
 								}
+								if(userLost) {
+									double x = robotCurrentPose.getPose().getCovariance()[0];
+									double y = robotCurrentPose.getPose().getCovariance()[1];
+									double z = robotCurrentPose.getPose().getCovariance()[2];
+									robotNavigation(x, y, z);
+									
+									requestMsg = publisher_robotSpeech.newMessage();
+									requestMsg.setData("어디 계신가요? 잘 따라 오고 있으신건가요?");
+									publisher_robotSpeech.publish(requestMsg);
+									System.out.println("/Action/RequestRobotSpeech published!");
+									System.out.println("어디 계신가요? 잘 따라 오고 있으신건가요?");
+									System.out.println();
+									
+									geometry_msgs.Twist msg = publisher_robotUserLost.newMessage();
+									for(int j=0;j<5;j++) {
+										msg.getAngular().setZ(0.5);
+										publisher_robotUserLost.publish(msg);
+										System.out.println("/Action/UserFindingAction published!");
+										System.out.println();
+									}
+									
+									while(!userFound) {
+										try
+										{
+											Thread.sleep(200);
+										}
+										catch (InterruptedException e)
+										{
+											e.printStackTrace();
+										}
+									}
+									i--;
+								}
 							}
 							actionComplete = false;
 							
+							while(getOnEV) {
+								try
+								{
+									Thread.sleep(200);
+								}
+								catch (InterruptedException e)
+								{
+									e.printStackTrace();
+								}
+							}
 						}
+						
+						SITUATION = isro_IRI + "CompleteDirectGuide";
+						EXPRESSION = isro_social_IRI+"_NeutralExpression";
+						
+						requestMsg = publisher_conversationRequest.newMessage();
+						jsonObject_requestConversation = new JSONObject();
+						jsonObject_requestConversation.put("situation", SITUATION);
+						jsonObject_requestConversation.put("expression", EXPRESSION);
+						requestMsg.setData(jsonObject_requestConversation.toJSONString());
+						publisher_conversationRequest.publish(requestMsg);
+						
+						System.out.println("/Dialog/RequestConversationContent published!");
+						System.out.println(jsonObject_requestConversation.toJSONString());
+						System.out.println();
 						
 						SCENE5_COMPLETE = true;
 						
@@ -313,9 +417,9 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 			@SuppressWarnings("unchecked")
 			private void robotTranslocateLevel(int startLevel, int endLevel) {
 				if(startLevel > endLevel) {
-					SITUATION = isro_IRI + "requestPuchEVButton(\"Down\")";
+					SITUATION = isro_IRI + "requestPushEVButton(\"Down\")";
 				} else {
-					SITUATION = isro_IRI + "requestPuchEVButton(\"Up\")";
+					SITUATION = isro_IRI + "requestPushEVButton(\"Up\")";
 				}
 				EXPRESSION = isro_social_IRI+"_NeutralExpression";
 				
@@ -330,9 +434,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				System.out.println(jsonObject_requestConversation.toJSONString());
 				System.out.println();
 				
-				// EV 문 열림 인식 후 들어가서 endLevel+"층 입니다." 인식 후 내리는 것 까지.... 어떡하쥬?
-				while(!EVOpen) { // 문 열릴 때("문이 열립니다" 소리날 때)까지 대기
-					
+				while(!getOnEV) {
 					try
 					{
 						Thread.sleep(200);
@@ -341,15 +443,116 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 					{
 						e.printStackTrace();
 					}
-					
 				}
-				robotNavigation(21.6, -6.1, 0.0); // 엘리베이터 내부로 이동
+
+				String ev_IRI = "http://www.robot-arbi.kr/ontologies/isro_map.owl#Elevator001";
+				String ev_Point = "(queryMultiRelation (tripleSet (triple \""+ev_IRI+"\" \""+isro_IRI+"hasInnerPoint\" $IP) (triple $IP \""+knowrob_IRI+"xCoord\" $IPx) (triple $IP \""+knowrob_IRI+"yCoord\" $IPy) (triple $IP \""+knowrob_IRI+"zCoord\" $IPz) (triple \""+ev_IRI+"\" \""+isro_IRI+"hasEntrancePoint\" $EP) (triple $EP \""+knowrob_IRI+"xCoord\" $EPx) (triple $EP \""+knowrob_IRI+"yCoord\" $EPy) (triple $EP \""+knowrob_IRI+"zCoord\" $EPz)) $result)";
+				String res = query(KNOWLEDGEMANAGER_ADDRESS, ev_Point);
+				GeneralizedList evGL = null;
+				try
+				{
+					evGL = GLFactory.newGLFromGLString(res);
+				}
+				catch (ParseException e2)
+				{
+					e2.printStackTrace();
+				}
+				double evIP_x = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(1).asGeneralizedList().getExpression(2).asValue().floatValue();
+				double evIP_y = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(2).asGeneralizedList().getExpression(2).asValue().floatValue();
+				double evIP_z = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(3).asGeneralizedList().getExpression(2).asValue().floatValue();
+				double evEP_x = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(5).asGeneralizedList().getExpression(2).asValue().floatValue();
+				double evEP_y = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(6).asGeneralizedList().getExpression(2).asValue().floatValue();
+				double evEP_z = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(7).asGeneralizedList().getExpression(2).asValue().floatValue();
 				
-				// "5층을 눌러주세요."
+				robotNavigation(evIP_x, evIP_y, evIP_z); // 엘리베이터 내부로 이동
+				requestMsg = publisher_robotSpeech.newMessage();
+				requestMsg.setData("제가 엘리베이터에 탈때까지 문을 연채로 잠시만 기다려주세요");
+				publisher_robotSpeech.publish(requestMsg);
+				System.out.println("/Action/RequestRobotSpeech published!");
+				System.out.println("제가 엘리베이터에 탈때까지 문을 연채로 잠시만 기다려주세요");
+				System.out.println();
 				
-				// "5층입니다. 문이 열립니다."인식 후 문앞까지 나가기
+				while(!actionComplete) {
+					if(actionAborted) { // 문이 닫혀있어서 action aborted되면 문이 열릴때까지 계속 이동요청
+						robotNavigation(evIP_x, evIP_y, evIP_z);
+						actionAborted = false;
+					}
+					try {
+						Thread.sleep(200);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				
+				requestMsg = publisher_robotSpeech.newMessage();
+				requestMsg.setData("기다려주셔서 감사합니다");
+				publisher_robotSpeech.publish(requestMsg);
+				System.out.println("/Action/RequestRobotSpeech published!");
+				System.out.println("기다려주셔서 감사합니다");
+				System.out.println();
+				
+				SITUATION = isro_IRI + "requestPushEVButton(\""+endLevel+"\")";
+				
+				requestMsg = publisher_conversationRequest.newMessage();
+				jsonObject_requestConversation = new JSONObject();
+				jsonObject_requestConversation.put("situation", SITUATION);
+				jsonObject_requestConversation.put("expression", EXPRESSION);
+				requestMsg.setData(jsonObject_requestConversation.toJSONString());
+				publisher_conversationRequest.publish(requestMsg);
+				System.out.println("/Dialog/RequestConversationContent published!");
+				System.out.println(jsonObject_requestConversation.toJSONString());
+				System.out.println();
+				
+				try
+				{
+					Thread.sleep(5000);
+				}
+				catch (InterruptedException e1)
+				{
+					e1.printStackTrace();
+				}
+				
+				robotNavigation(evEP_x, evEP_y, evEP_z); // 엘리베이터 외부로 이동
+				while(!actionComplete) {
+					try {
+						Thread.sleep(200);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					if(actionAborted) { // 문이 닫혀있어서 action aborted되면 문이 열릴때까지 계속 이동요청
+						robotNavigation(evEP_x, evEP_y, evEP_z);
+						actionAborted = false;
+					}
+				}
+					
+				SITUATION = isro_IRI + "InitDirectGuide";
+				EXPRESSION = isro_social_IRI+"_NeutralExpression";
 				
 				
+				requestMsg = publisher_conversationRequest.newMessage();
+				jsonObject_requestConversation = new JSONObject();
+				jsonObject_requestConversation.put("situation", SITUATION);
+				jsonObject_requestConversation.put("expression", EXPRESSION);
+				requestMsg.setData(jsonObject_requestConversation.toJSONString());
+				publisher_conversationRequest.publish(requestMsg);
+				
+				System.out.println("/Dialog/RequestConversationContent published!");
+				System.out.println(jsonObject_requestConversation.toJSONString());
+				System.out.println();
+				
+				while(!guideStart) {
+					try
+					{
+						Thread.sleep(200);
+					}
+					catch (InterruptedException e)
+					{
+						e.printStackTrace();
+					}
+				}
+				guideStart = false;
+				
+				getOnEV = false;
 			}
 
 			private void robotNavigation(double e_x, double e_y, double e_z) {
@@ -363,8 +566,8 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				
 				msg.getPose().getOrientation().setX(0);
 				msg.getPose().getOrientation().setY(0);
-				msg.getPose().getOrientation().setZ(0.36);
-				msg.getPose().getOrientation().setW(0.93);
+				msg.getPose().getOrientation().setZ(0);
+				msg.getPose().getOrientation().setW(1);
 				System.out.println("Go to : (" + e_x + ", " + e_y + ", "+ e_z +")");
 				publisher_robotNavigation.publish(msg);
 				System.out.println("/move_base_simple/goal published!");
@@ -383,7 +586,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 	@Override
 	public void onStart(ConnectedNode connectedNode) {
 		System.out.println("+++++++++++++++++++++++++++");
-		System.out.println("+   Task Manager Start    +");
+		System.out.println("+ Task Manager Start +");
 		System.out.println("+++++++++++++++++++++++++++");
 		// /Vision/FaceRecognition "(recognitionData (resolution $width $height) (coordinate $x $y $z) (faceID \"001\"))"
 		publisher_conversationRequest = connectedNode.newPublisher("/Dialog/RequestConversationContent", std_msgs.String._TYPE);
@@ -391,6 +594,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 		publisher_robotSpeech = connectedNode.newPublisher("/Action/RequestRobotSpeech", std_msgs.String._TYPE);
 		publisher_robotAction = connectedNode.newPublisher("/Action/RequestRobotAction", std_msgs.String._TYPE);
 		publisher_robotNavigation = connectedNode.newPublisher("/move_base_simple/goal", geometry_msgs.PoseStamped._TYPE);
+		publisher_robotUserLost = connectedNode.newPublisher("/Action/UserFindingAction", geometry_msgs.Twist._TYPE);
 		
 		Subscriber<std_msgs.String> subscriber_faceRecognition = connectedNode.newSubscriber("/Vision/FaceRecognition", std_msgs.String._TYPE);
 		Subscriber<std_msgs.String> subscriber_conversationInfo = connectedNode.newSubscriber("/Dialog/RequestConversationInfo", std_msgs.String._TYPE);
@@ -398,15 +602,75 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 //		Subscriber<std_msgs.String> subscriber_resolution = connectedNode.newSubscriber("/Vision/Resolution", std_msgs.String._TYPE); // (resolution $width $height)
 		Subscriber<std_msgs.String> subscriber_speechAnalysis = connectedNode.newSubscriber("/Dialog/SpeechAnalysis", std_msgs.String._TYPE);
 		Subscriber<move_base_msgs.MoveBaseActionResult> subscriber_navigationResult = connectedNode.newSubscriber("/move_base/result", move_base_msgs.MoveBaseActionResult._TYPE);
-		Subscriber<std_msgs.String> subscriber_EVOpen = connectedNode.newSubscriber("/Elevator", std_msgs.String._TYPE);
+		Subscriber<std_msgs.String> subscriber_EV = connectedNode.newSubscriber("/Elevator", std_msgs.String._TYPE);
+		Subscriber<std_msgs.String> subscriber_guide = connectedNode.newSubscriber("/Action/RequestRobotSpeech", std_msgs.String._TYPE);
+		Subscriber<std_msgs.String> subscriber_speechStart = connectedNode.newSubscriber("/Voice/SpeechRecognition", std_msgs.String._TYPE);
+		Subscriber<std_msgs.String> subscrbier_lostUser = connectedNode.newSubscriber("/Vision/UserLost", std_msgs.String._TYPE);
+		Subscriber<geometry_msgs.PoseWithCovarianceStamped> subscriber_robotGeometryStatus = connectedNode.newSubscriber("/amcl_pose", geometry_msgs.PoseWithCovarianceStamped._TYPE);
 		
-		subscriber_EVOpen.addMessageListener(new MessageListener<std_msgs.String>() {
+		subscriber_robotGeometryStatus.addMessageListener(new MessageListener<geometry_msgs.PoseWithCovarianceStamped>() {
+
+			@Override
+			public void onNewMessage(geometry_msgs.PoseWithCovarianceStamped arg)
+			{
+				robotCurrentPose = arg;
+			}
+			
+		});
+		
+		subscrbier_lostUser.addMessageListener(new MessageListener<std_msgs.String>() {
 
 			@Override
 			public void onNewMessage(std_msgs.String arg)
 			{
 				String msg = arg.getData();
-				if(msg.contains("열")) {
+				if(msg.equals("LostUser")) {
+					userFound = false;
+					userLost = true;
+				} else if (msg.equals("NewUser")) {
+					userLost = false;
+					userFound = true;
+				}
+			}
+			
+		});
+		
+		subscriber_speechStart.addMessageListener(new MessageListener<std_msgs.String>()
+		{
+
+			@Override
+			public void onNewMessage(std_msgs.String arg)	{
+				String msg = arg.getData();
+				if(msg.contains("안내")) {
+					speechStart = true;
+				}
+				
+			}
+		});
+		
+		subscriber_guide.addMessageListener(new MessageListener<std_msgs.String>()
+		{
+
+			@Override
+			public void onNewMessage(std_msgs.String arg)	{
+				String msg = arg.getData();
+				if(msg.contains("저를 따라")) {
+					guideStart = true;
+				}
+				if(msg.contains("버튼을")) {
+					getOnEV = true;
+				}
+				
+			}
+		});
+		
+		subscriber_EV.addMessageListener(new MessageListener<std_msgs.String>() {
+
+			@Override
+			public void onNewMessage(std_msgs.String arg)
+			{
+				String msg = arg.getData();
+				if(msg.contains("열립니다")) {
 					EVOpen = true;
 				}
 				
@@ -421,6 +685,10 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				byte result = arg.getStatus().getStatus();
 				if(result == 3) {
 					actionComplete = true;
+					actionAborted = false;
+				} else if(result == 4) {
+					actionComplete = false;
+					actionAborted = true;
 				}
 			}
 		});
@@ -458,7 +726,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				Expression exp4 = null;
 				
 				try {
-					exp2 = GLFactory.newExpression(GLFactory.newGLFromGLString("(predicate \""+isro_social_IRI+"containIntention\" \""+isro_social_IRI+"_"+jsonObject.get("speechIntention").toString()+"Intention\")"));		
+					exp2 = GLFactory.newExpression(GLFactory.newGLFromGLString("(predicate \""+isro_social_IRI+"containIntention\" \""+isro_social_IRI+"_"+jsonObject.get("speechIntention").toString()+"\")"));		
 					
 				} catch (ParseException e) {
 					e.printStackTrace();
@@ -489,6 +757,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				System.out.println("\n\n");
 				
 				SCENE_NUMBER++;
+				
 			}
 		});
 		
@@ -737,6 +1006,12 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 						if(sbj.equals("화자")) {
 							sbj = USER;
 						}
+						if(sbj.equals("독감")) {
+							sbj = "http://www.robot-arbi.kr/ontologies/isro_social.owl#_Influenza";
+						}
+						if(sbj.equals("내과")) {
+							sbj = "http://www.robot-arbi.kr/ontologies/DemoKM.owl#InternalMedicineDepartment001";
+						}
 						pre = jsonTriple.get("P").toString();
 						obj = jsonTriple.get("O").toString();
 						if(obj.equals("화자")) {
@@ -786,6 +1061,12 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 						}
 						if(obj.equals(USER)) {
 							obj = "화자";
+						}
+						if(sbj.equals("http://www.robot-arbi.kr/ontologies/DemoKM.owl#InternalMedicineDepartment001")) {
+							sbj = "내과";
+						}
+						if(sbj.equals("http://www.robot-arbi.kr/ontologies/isro_social.owl#_Influenza")) {
+							sbj = "독감";
 						}
 						
 						resultTriple.put("S", sbj);
