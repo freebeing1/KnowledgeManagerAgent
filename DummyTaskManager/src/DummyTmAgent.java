@@ -318,8 +318,11 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 								double e_x = Double.parseDouble(endCoord.split(" ")[0]);
 								double e_y = Double.parseDouble(endCoord.split(" ")[1]);
 								double e_z = Double.parseDouble(endCoord.split(" ")[2]);
-									
-								robotNavigation(e_x, e_y, e_z);
+								if(i == 3) {
+									robotNavigation(e_x, e_y, e_z, 0.99, 0.01);
+								}else {
+									robotNavigation(e_x, e_y, e_z, 0, 1);
+								}
 							}
 							
 							Pattern patternLevel = Pattern.compile("\\[(.*?)\\]");
@@ -341,10 +344,11 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 									e.printStackTrace();
 								}
 								if(userLost) {
-									double x = robotCurrentPose.getPose().getCovariance()[0];
-									double y = robotCurrentPose.getPose().getCovariance()[1];
-									double z = robotCurrentPose.getPose().getCovariance()[2];
-									robotNavigation(x, y, z);
+									
+									double x = robotCurrentPose.getPose().getPose().getPosition().getX();
+									double y = robotCurrentPose.getPose().getPose().getPosition().getY();
+									double z = robotCurrentPose.getPose().getPose().getPosition().getZ();
+									robotNavigation(x, y, z, 0, 1);
 									
 									requestMsg = publisher_robotSpeech.newMessage();
 									requestMsg.setData("어디 계신가요? 잘 따라 오고 있으신건가요?");
@@ -371,7 +375,15 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 											e.printStackTrace();
 										}
 									}
+									requestMsg = publisher_robotSpeech.newMessage();
+									requestMsg.setData("거기 계셨군요. 저를 잘 따라 오세요.");
+									publisher_robotSpeech.publish(requestMsg);
+									System.out.println("/Action/RequestRobotSpeech published!");
+									System.out.println("거기 계셨군요. 저를 잘 따라 오세요.");
+									System.out.println();
 									i--;
+									System.out.println("i = " + i );
+									break;
 								}
 							}
 							actionComplete = false;
@@ -448,23 +460,28 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				String ev_IRI = "http://www.robot-arbi.kr/ontologies/isro_map.owl#Elevator001";
 				String ev_Point = "(queryMultiRelation (tripleSet (triple \""+ev_IRI+"\" \""+isro_IRI+"hasInnerPoint\" $IP) (triple $IP \""+knowrob_IRI+"xCoord\" $IPx) (triple $IP \""+knowrob_IRI+"yCoord\" $IPy) (triple $IP \""+knowrob_IRI+"zCoord\" $IPz) (triple \""+ev_IRI+"\" \""+isro_IRI+"hasEntrancePoint\" $EP) (triple $EP \""+knowrob_IRI+"xCoord\" $EPx) (triple $EP \""+knowrob_IRI+"yCoord\" $EPy) (triple $EP \""+knowrob_IRI+"zCoord\" $EPz)) $result)";
 				String res = query(KNOWLEDGEMANAGER_ADDRESS, ev_Point);
+				System.out.println(res);
 				GeneralizedList evGL = null;
 				try
 				{
 					evGL = GLFactory.newGLFromGLString(res);
+//					System.out.println("not");
 				}
 				catch (ParseException e2)
 				{
 					e2.printStackTrace();
 				}
-				double evIP_x = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(1).asGeneralizedList().getExpression(2).asValue().floatValue();
-				double evIP_y = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(2).asGeneralizedList().getExpression(2).asValue().floatValue();
-				double evIP_z = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(3).asGeneralizedList().getExpression(2).asValue().floatValue();
-				double evEP_x = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(5).asGeneralizedList().getExpression(2).asValue().floatValue();
-				double evEP_y = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(6).asGeneralizedList().getExpression(2).asValue().floatValue();
-				double evEP_z = evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(7).asGeneralizedList().getExpression(2).asValue().floatValue();
+				System.out.println(evGL.toString());
+				double evIP_x = Double.parseDouble(evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(1).asGeneralizedList().getExpression(2).asValue().stringValue());
+				double evIP_y = Double.parseDouble(evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(2).asGeneralizedList().getExpression(2).asValue().stringValue());
+				double evIP_z = Double.parseDouble(evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(3).asGeneralizedList().getExpression(2).asValue().stringValue());
+				System.out.println("EV Inner point : ("+evIP_x+", "+evIP_y+", "+evIP_z+")");
+				double evEP_x = Double.parseDouble(evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(5).asGeneralizedList().getExpression(2).asValue().stringValue());
+				double evEP_y = Double.parseDouble(evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(6).asGeneralizedList().getExpression(2).asValue().stringValue());
+				double evEP_z = Double.parseDouble(evGL.getExpression(1).asGeneralizedList().getExpression(0).asGeneralizedList().getExpression(7).asGeneralizedList().getExpression(2).asValue().stringValue());
+				System.out.println("EV Entrance point : ("+evIP_x+", "+evIP_y+", "+evIP_z+")");
 				
-				robotNavigation(evIP_x, evIP_y, evIP_z); // 엘리베이터 내부로 이동
+				robotNavigation(evIP_x, evIP_y, evIP_z, 0, 1); // 엘리베이터 내부로 이동
 				requestMsg = publisher_robotSpeech.newMessage();
 				requestMsg.setData("제가 엘리베이터에 탈때까지 문을 연채로 잠시만 기다려주세요");
 				publisher_robotSpeech.publish(requestMsg);
@@ -474,7 +491,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				
 				while(!actionComplete) {
 					if(actionAborted) { // 문이 닫혀있어서 action aborted되면 문이 열릴때까지 계속 이동요청
-						robotNavigation(evIP_x, evIP_y, evIP_z);
+						robotNavigation(evIP_x, evIP_y, evIP_z, 0, 1);
 						actionAborted = false;
 					}
 					try {
@@ -505,14 +522,14 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				
 				try
 				{
-					Thread.sleep(5000);
+					Thread.sleep(15000);
 				}
 				catch (InterruptedException e1)
 				{
 					e1.printStackTrace();
 				}
 				
-				robotNavigation(evEP_x, evEP_y, evEP_z); // 엘리베이터 외부로 이동
+				robotNavigation(evEP_x, evEP_y, evEP_z, 0, 1); // 엘리베이터 외부로 이동
 				while(!actionComplete) {
 					try {
 						Thread.sleep(200);
@@ -520,7 +537,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 						e.printStackTrace();
 					}
 					if(actionAborted) { // 문이 닫혀있어서 action aborted되면 문이 열릴때까지 계속 이동요청
-						robotNavigation(evEP_x, evEP_y, evEP_z);
+						robotNavigation(evEP_x, evEP_y, evEP_z, 0, 1);
 						actionAborted = false;
 					}
 				}
@@ -555,7 +572,7 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				getOnEV = false;
 			}
 
-			private void robotNavigation(double e_x, double e_y, double e_z) {
+			private void robotNavigation(double e_x, double e_y, double e_z, double q_z, double q_w) {
 
 				geometry_msgs.PoseStamped msg = publisher_robotNavigation.newMessage();
 				msg.getHeader().setFrameId("map");
@@ -566,9 +583,9 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 				
 				msg.getPose().getOrientation().setX(0);
 				msg.getPose().getOrientation().setY(0);
-				msg.getPose().getOrientation().setZ(0);
-				msg.getPose().getOrientation().setW(1);
-				System.out.println("Go to : (" + e_x + ", " + e_y + ", "+ e_z +")");
+				msg.getPose().getOrientation().setZ(q_z);
+				msg.getPose().getOrientation().setW(q_w);
+				System.out.println("Go to : (" + e_x + ", " + e_y + ", "+ e_z +", "+q_z+", "+q_w+")");
 				publisher_robotNavigation.publish(msg);
 				System.out.println("/move_base_simple/goal published!");
 				
@@ -624,10 +641,14 @@ public class DummyTmAgent extends ArbiAgent implements NodeMain{
 			public void onNewMessage(std_msgs.String arg)
 			{
 				String msg = arg.getData();
+				System.out.println("/Vision/UserLost subscribed!");
+				System.out.println();
 				if(msg.equals("LostUser")) {
+					System.out.println(msg);
 					userFound = false;
 					userLost = true;
 				} else if (msg.equals("NewUser")) {
+					System.out.println(msg);
 					userLost = false;
 					userFound = true;
 				}
